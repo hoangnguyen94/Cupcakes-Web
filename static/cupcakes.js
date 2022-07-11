@@ -1,67 +1,94 @@
-const BASE_URL = "http://127.0.0.1:5000//api"
-
-// give data about a cupcake, generate html
-function generateCupcakeHTML ( cupcake )
-{
-    return `
-        <div data-cupcake-id=${cupcake.id}>
-            <li>
-                ${cupcake.flavor} / ${cupcake.size} / ${cupcake.rating}
-                <button class="delete-button"> X </button>
-            </li>
-            <img class="Cupcake-img"
-                    src="${cupcake.image}
-                    alt="(no image provided)">
-        </div>`;
+function list_cupcakes() {
+    listCupcakes()
 }
 
-
-
-// put initial cupcakes on page.
-
-async function showInitialCupcakes ()
-{
-    const response = await axios.get( `${BASE_URL}/cupcakes` );
-
-    for ( let cupcakeData of response.data.cupcakes )
-    {
-        let newCupcake = $(generateCupcakeHTML( cupcakeData ) );
-        $("#cupcakes-list").append( newCupcake );
+async function listCupcakes() {
+    resp = await axios.get('/api/cupcakes');
+    for (i = 0; i < resp.data.cupcakes.length; i++) {
+        addCupcake = generateCupcake(resp.data.cupcakes[i]);
+        $('.list-cupcakes').append(addCupcake);
     }
 }
 
-// handle form for adding a new cupcakes
+function generateCupcake(cupcake) {
+    return `
+        <div id="${cupcake.id}"> 
+            <li>
+                ${cupcake.flavor} / ${cupcake.rating} / ${cupcake.size}
+            </li>
+            <img src="${cupcake.image}" alt="(no image provided)" width="200" height="200">
+            <button class="delete_cupcake" data-id="${cupcake.id}">X</button>
+        </div>`;
+}
 
-$( "#new-cupcake-form" ).on( "submit", async function ( evt )
-{
-    evt.preventDefault();
+$('button').click(addCupcake)
 
-    let flavor = $( "#form-flavor" ).val();
-    let rating = $( "#form-rating" ).val();
-    let size = $( "#form-size" ).val();
-    let image = $( "#form-image" ).val();
+async function addCupcake(e) {
+    e.preventDefault()
+    if (!validateForm()) {
+        console.log('Form did not validate');
+        return;
+    }
 
-    const newCupcakeResponse = await axios.post( `${BASE_URL}/cupcakes`, {
-        flavor, rating, size, image
-    } )
-    
-    let newCupcake = $( generateCupcakeHTML( newCupcakeResponse.data.cupcake ) );
-    $( "#cupcakes-list" ).append( newCupcake );
-    $( "#new-cupcake-form" ).trigger( "reset" );
-} )
+    let flavor = $('#flavor').val();
+    let size = $('#size').val();
+    let rating = $('#rating').val();
+    let image = $('#image').val();
+    res = await axios.post('/api/cupcakes', {flavor: flavor, 
+        size: size,
+        rating: rating,
+        image: image});
 
-// handle clicking delete: delete cupcake
+    addCupcake = generateCupcake(res.data.cupcake);
+    $('.list-cupcakes').append(addCupcake);
+    $('#flavor').val('');
+    $('#size').val('');
+    $('#rating').val('');
+    $('#image').val('');
+}
 
-$( "#cupcake-list").on( "click", "#delete-button", async function ( evt )
-{
-    evt.preventDefault();
-    console.log( evt );
-    let $cupcake = $( evt.target ).closest( "div" );
-    let cupcakeId = $cupcake.attr( "data-cupcake-id" );
-  
-    
-    await axios.delete( `${BASE_URL}/cupcakes/${cupcakeId}` );
-    $cupcake.remove();
-} ) 
+function validateForm() {
 
-$( showInitialCupcakes );
+    if ($('#flavor').val() == "") {
+        alert('Please provide a flavor!');
+        $('#flavor').focus();
+        return false;
+    }
+
+    if ($('#size').val() == "") {
+        alert('Please provide a size!');
+        $('#size').focus();
+        return false;
+    }
+
+    if ($('#rating').val() == "") {
+        alert('Please provide a rating!');
+        $('#rating').focus();
+        return false;
+    }
+
+    const rating = $('#rating').val();
+    const floatRating = parseFloat(rating);
+
+    if (isNaN(floatRating)) {
+        alert('Please provide a rating between 0 and 10!');
+        $('#rating').focus();
+        return false;
+    }
+
+    if (floatRating < 0 || floatRating > 10) {
+        alert('Please provide a rating between 0 and 10!');
+        $('#rating').focus();
+        return false;
+    }
+
+    return true;
+}
+
+$('.list-cupcakes').on('click', '.delete_cupcake', async function(e) {
+    e.preventDefault();
+    const id = $(this).data('id');
+    await axios.delete(`/api/cupcakes/${id}`);
+    $(this).parent().remove()
+
+})
